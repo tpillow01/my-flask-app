@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="hero card">
+  <div class="hero-left">
+    <h1 id="greeting">Good morning, {{ me.name if me else 'Mechanic' }}</h1>
+    <p class="sub">Today’s van: <strong id="heroVan">—</strong></p>
+    <div class="cta">
+      <button type="button" id="startBtn" class="btn primary">Start shift check</button>
+      <button type="button" id="scrollToForm" class="btn ghost">Jump to form</button>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div id="checksRing" class="ring" style="--val:0;">
+      <span id="checksRingText">0/14<br><small>checks</small></span>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Daily Van Checklist</h2>
+    <div class="toggle-dot" title="Active"></div>
+  </div>
+
+  <form id="checklistForm" autocomplete="on">
+    <div class="grid">
+      <label class="field">
+        <span>Shift</span>
+        <select name="shift" id="shift" required>
+          <option value="Start">Start of Day</option>
+          <option value="End">End of Day</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Mechanic Name</span>
+        <input name="mechanic" id="mechanic" type="text"
+               value="{{ me.name if me else '' }}" placeholder="e.g., Jordan" required />
+      </label>
+
+      <label class="field">
+        <span>Van</span>
+        <select name="van_id" id="van_id" required>
+          {% for v in vans %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Odometer</span>
+        <input name="odometer" id="odometer" type="number" inputmode="numeric" min="0" placeholder="e.g., 123456" />
+      </label>
+
+      <label class="field fuel-field">
+        <span>Fuel Level</span>
+        <div class="fuel-wrap">
+          <div id="fuelRing" class="ring small" style="--val:.33"><span id="fuelRingText">33%</span></div>
+          <input name="fuel_level" id="fuel" type="range" min="0" max="100" value="33" />
+        </div>
+      </label>
+    </div>
+
+    <!-- 14 checks -->
+    <div class="checks pills">
+      <label><input type="checkbox" name="interior_clean"> Interior clean</label>
+      <label><input type="checkbox" name="trash_removed"> Trash removed</label>
+      <label><input type="checkbox" name="tools_secured"> Tools secured</label>
+
+      <label><input type="checkbox" name="tires_ok"> Tires OK</label>
+      <label><input type="checkbox" name="lights_ok"> Lights working</label>
+      <label><input type="checkbox" name="fluids_ok"> Fluids OK</label>
+
+      <label><input type="checkbox" name="windshield_clean"> Windshield clean</label>
+      <label><input type="checkbox" name="wiper_fluid_ok"> Wiper fluid OK</label>
+      <label><input type="checkbox" name="horn_ok"> Horn working</label>
+
+      <label><input type="checkbox" name="seatbelts_ok"> Seatbelts OK</label>
+      <label><input type="checkbox" name="first_aid_present"> First-aid kit</label>
+      <label><input type="checkbox" name="fire_extinguisher_present"> Fire extinguisher</label>
+
+      <label><input type="checkbox" name="backup_camera_ok"> Backup camera OK</label>
+      <label><input type="checkbox" name="registration_present"> Registration/insurance present</label>
+    </div>
+
+    <label class="field">
+      <span>Notes</span>
+      <textarea name="notes" id="notes" rows="3" placeholder="Enter any additional notes..."></textarea>
+    </label>
+
+    <div class="actions">
+      <button class="btn primary" type="submit">Save Check</button>
+      <span id="status" class="status"></span>
+    </div>
+  </form>
+</section>
+{% endblock %}

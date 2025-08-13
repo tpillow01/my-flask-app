@@ -1,0 +1,12 @@
+{
+  "name": "Van Daily Checklist",
+  "short_name": "Van Checklist",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#3b82f6",
+  "theme_color": "#3b82f6",
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/icons/icon-519.png", "sizes": "519x519", "type": "image/png" }
+  ]
+}

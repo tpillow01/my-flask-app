@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <div class="card-head">
+    <h2>Recent Submissions</h2>
+    <div class="toggle-dot" title="Admin"></div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table" id="entriesTable">
+      <thead>
+        <tr>
+          <th>Time</th><th>Shift</th><th>Mechanic</th><th>Van</th>
+          <th>Odo</th><th>Fuel</th><th>Checks</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody id="entriesBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+(async function(){
+  try{
+    const res = await fetch('/api/entries');
+    const items = await res.json();
+    const tbody = document.getElementById('entriesBody');
+    tbody.innerHTML = items.map(r => {
+      const checks = [
+        r.interior_clean && 'Interior',
+        r.trash_removed && 'Trash',
+        r.tools_secured && 'Tools',
+        r.tires_ok && 'Tires',
+        r.lights_ok && 'Lights',
+        r.fluids_ok && 'Fluids',
+        r.windshield_clean && 'Windshield',
+        r.wiper_fluid_ok && 'Wiper fluid',
+        r.horn_ok && 'Horn',
+        r.seatbelts_ok && 'Seatbelts',
+        r.first_aid_present && 'First-aid',
+        r.fire_extinguisher_present && 'Extinguisher',
+        r.backup_camera_ok && 'Backup cam',
+        r.registration_present && 'Docs'
+      ].filter(Boolean).join(', ') || '—';
+      const t = new Date(r.created_at);
+      return `<tr>
+        <td>${t.toLocaleString()}</td>
+        <td>${r.shift}</td>
+        <td>${r.mechanic}</td>
+        <td>${r.van_id}</td>
+        <td>${r.odometer ?? ''}</td>
+        <td>${r.fuel_level ?? ''}%</td>
+        <td>${checks}</td>
+        <td>${(r.notes || '').replace(/</g,'&lt;')}</td>
+      </tr>`;
+    }).join('');
+  }catch(e){ console.error(e); }
+})();
+</script>
+{% endblock %}

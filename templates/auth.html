@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if view == 'create' %}
+  <!-- Create account -->
+  <section class="card auth-card" id="createCard">
+    <h1>Create account</h1>
+    <p class="sub">New mechanic? Create your login below. (Admin does not need an account.)</p>
+
+    <form method="post" action="{{ url_for('auth_create') }}" class="auth-form">
+      <label class="field">
+        <span>Full Name</span>
+        <input type="text" name="name" placeholder="e.g., Jordan Smith" required />
+      </label>
+      <label class="field">
+        <span>Username (email or handle)</span>
+        <input type="text" name="username" placeholder="name@example.com" required />
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input type="password" name="password" placeholder="Choose a strong password" required />
+      </label>
+      <div class="actions">
+        <button class="btn primary" type="submit">Create Account</button>
+        <a class="btn ghost" href="{{ url_for('auth', view='login', next=request.args.get('next')) }}">Back to sign in</a>
+      </div>
+    </form>
+  </section>
+
+{% else %}
+  <!-- Sign in -->
+  <section class="card auth-card" id="signinCard">
+    <h1>Sign in</h1>
+    <p class="sub">Use your mechanic account. For admin access, enter the admin username & password.</p>
+
+    <form method="post" action="{{ url_for('auth_login', next=request.args.get('next')) }}" class="auth-form">
+      <label class="field">
+        <span>Username</span>
+        <input type="text" name="username" autocomplete="username" required />
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input type="password" name="password" autocomplete="current-password" required />
+      </label>
+      <div class="actions">
+        <button class="btn primary" type="submit">Sign In</button>
+        <a class="btn ghost" href="{{ url_for('auth', view='create', next=request.args.get('next')) }}">Create account instead</a>
+      </div>
+    </form>
+  </section>
+{% endif %}
+
+{% endblock %}
