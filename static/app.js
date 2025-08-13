@@ -8,7 +8,7 @@ installBtn?.addEventListener('click', async () => { if (!deferredPrompt) return;
 
 // Greeting + hero
 const mechInput = document.getElementById('mechanic');
-const vanSelect = document.getElementById('van_id');
+const vanField = document.getElementById('van_id'); // works for <select> or <input>
 const heroVan = document.getElementById('heroVan');
 const greeting = document.getElementById('greeting');
 const startBtn = document.getElementById('startBtn');
@@ -20,9 +20,14 @@ function updateGreeting(){
   const h = new Date().getHours(); const sal = h<12?'Good morning':h<18?'Good afternoon':'Good evening';
   greeting.textContent = `${sal}, ${name || 'Mechanic'}`;
 }
-function updateHeroVan(){ if (heroVan && vanSelect) heroVan.textContent = vanSelect.value || '—'; }
+function updateHeroVan(){
+  if (heroVan && vanField) heroVan.textContent = vanField.value || '—';
+}
 mechInput?.addEventListener('input', updateGreeting);
-vanSelect?.addEventListener('change', updateHeroVan);
+// Support both select and input for the van field
+vanField?.addEventListener('change', updateHeroVan);
+vanField?.addEventListener('input', updateHeroVan);
+
 document.addEventListener('DOMContentLoaded', () => { updateGreeting(); updateHeroVan(); });
 
 startBtn?.addEventListener('click', () => {
@@ -141,6 +146,7 @@ form?.addEventListener('submit', async (e) => {
       return;
     }
 
+    // If the checklist failed, queue it offline
     if (!res.ok) {
       await queuePending({ payload });
       statusEl.textContent = 'Saved offline. Will sync when online.';
@@ -149,8 +155,43 @@ form?.addEventListener('submit', async (e) => {
       return;
     }
 
-    statusEl.textContent = 'Saved ✓'; statusEl.className = 'status ok';
-    form.reset(); updateFuelRing(); updateChecksRing(); updateGreeting();
+    // ✅ Checklist saved; get entry id
+    const data = await res.json();
+    if (!data?.ok || !data?.id) {
+      statusEl.textContent = 'Error saving (no id returned).';
+      statusEl.className = 'status error';
+      return;
+    }
+
+    // 🔹 NEW: Upload photos if selected
+    const photosInput = document.getElementById('photos');
+    if (photosInput && photosInput.files && photosInput.files.length > 0) {
+      try {
+        statusEl.textContent = `Uploading ${photosInput.files.length} photo(s)…`;
+        statusEl.className = 'status';
+        const photoFD = new FormData();
+        for (const f of photosInput.files) photoFD.append('photos', f);
+        const up = await fetch(`/api/entries/${data.id}/photos`, { method: 'POST', body: photoFD });
+        const upData = await up.json().catch(() => ({}));
+        if (!up.ok || !upData?.ok) {
+          statusEl.textContent = 'Checklist saved; photo upload failed.';
+          statusEl.className = 'status error';
+        }
+      } catch {
+        // If offline or failed, we keep the checklist saved and notify about photos only
+        statusEl.textContent = 'Checklist saved; photos will not upload offline.';
+        statusEl.className = 'status offline';
+      }
+    }
+
+    // Done
+    statusEl.textContent = 'Saved ✓';
+    statusEl.className = 'status ok';
+    form.reset();
+    updateFuelRing();
+    updateChecksRing();
+    updateGreeting();
+    updateHeroVan();
   } catch {
     await queuePending({ payload });
     statusEl.textContent = 'Saved offline. Will sync when online.';
