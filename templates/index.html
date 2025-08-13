@@ -80,11 +80,17 @@
 </section>
 
 <script>
-  // Minimal submit handler (uses JSON API). If you already have static/app.js doing this, you can delete this script block.
+  // Minimal submit handler (uses JSON API). If you already have static/app.js doing this, you can delete this block.
   const form = document.getElementById('checklistForm');
 
-  function bool(name){ return document.querySelector(`[name="${name}"]`).checked; }
-  function val(id){ const el = document.getElementById(id); return el ? el.value : ""; }
+  function bool(name){
+    const el = document.querySelector(`[name="${name}"]`);
+    return el ? el.checked : false;
+  }
+  function val(id){
+    const el = document.getElementById(id);
+    return el ? el.value : "";
+  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
