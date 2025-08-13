@@ -245,7 +245,7 @@ def _alias_signup():
 @app.get("/")
 @login_required
 def index():
-    # pass your van numbers to the template (as strings)
+    # Pass the van numbers to the template (as strings for convenience)
     vans = [str(n) for n in VAN_NUMBERS]
     return render_template("index.html", vans=vans, me=current_user(), title="Van Daily Checklist")
 
