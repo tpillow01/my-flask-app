@@ -41,12 +41,9 @@
 
       <label class="field">
         <span>Van</span>
-        <!-- Changed: input + datalist so users can type OR pick -->
-        <input type="text" name="van_id" id="van_id"
-               list="van_list" placeholder="Type or pick (e.g., 131)" required />
-        <datalist id="van_list">
-          {% for v in vans %}<option value="{{ v }}"></option>{% endfor %}
-        </datalist>
+        <select name="van_id" id="van_id" required>
+          {% for v in vans %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+        </select>
       </label>
 
       <label class="field">
@@ -85,6 +82,13 @@
       <label><input type="checkbox" name="registration_present"> Registration/insurance present</label>
     </div>
 
+    <!-- 🔹 ADD: Photos field (optional) -->
+    <label class="field">
+      <span>Photos (optional)</span>
+      <input type="file" id="photos" name="photos" accept="image/*" multiple capture="environment" />
+      <small class="hint">Add pictures of damage or wear (JPG/PNG/WEBP, up to 16MB).</small>
+    </label>
+
     <label class="field">
       <span>Notes</span>
       <textarea name="notes" id="notes" rows="3" placeholder="Enter any additional notes..."></textarea>
@@ -96,19 +100,4 @@
     </div>
   </form>
 </section>
-
-<!-- Tiny helper so the hero shows the chosen/typed van -->
-<script>
-  (function () {
-    const vanInput = document.getElementById('van_id');
-    const hero = document.getElementById('heroVan');
-    function updateHero() { hero.textContent = vanInput.value ? `Van ${vanInput.value}` : '—'; }
-    if (vanInput && hero) {
-      vanInput.addEventListener('input', updateHero);
-      vanInput.addEventListener('change', updateHero);
-      updateHero();
-    }
-  })();
-</script>
-
 {% endblock %}

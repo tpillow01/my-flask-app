@@ -12,6 +12,10 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import text
 
+# 🔹 ADD: imports for uploads
+from werkzeug.utils import secure_filename
+from uuid import uuid4
+
 # ── App setup ─────────────────────────────────────────────────────────────
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.getenv("SECRET_KEY", "dev-insecure-change-me")
@@ -20,7 +24,7 @@ app.secret_key = os.getenv("SECRET_KEY", "dev-insecure-change-me")
 ADMIN_USERNAME = "tynanfleetadmin"
 ADMIN_PASSWORD = "Tynanvans2025"
 
-# ── Van numbers (edit here when vans change) ─────────────────────────────
+# 🔹 ADD: Van numbers (use in / route)
 VAN_NUMBERS = [
     131, 138, 156, 159, 166, 169, 172, 174, 175, 176, 177,
     179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189,
@@ -35,6 +39,14 @@ VAN_NUMBERS = [
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///checklist.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
+
+# 🔹 ADD: upload config (works locally and on Render with a disk at /var/data)
+DATA_DIR = os.getenv("DATA_DIR", "/var/data")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(DATA_DIR, "uploads"))
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_DIR
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB/request
+ALLOWED_IMAGE_EXTS = {"jpg", "jpeg", "png", "webp"}
 
 # ── Models ────────────────────────────────────────────────────────────────
 class User(db.Model):
@@ -80,6 +92,14 @@ class ChecklistEntry(db.Model):
     jack_present              = db.Column(db.Boolean, default=False)
 
     notes      = db.Column(db.Text, nullable=True)
+
+# 🔹 ADD: photo model (new table)
+class ChecklistPhoto(db.Model):
+    __tablename__ = "checklist_photos"
+    id         = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    entry_id   = db.Column(db.Integer, db.ForeignKey("checklist_entries.id"), nullable=False, index=True)
+    filename   = db.Column(db.String(255), nullable=False)
 
 # ── Startup: create tables + add any missing columns (SQLite safe) ────────
 def _ensure_columns():
@@ -177,6 +197,13 @@ def inject_ctx():
         "admin_authed": bool(session.get("admin_authed"))
     }
 
+# 🔹 ADD: helper for file extensions
+def _allowed_image(filename: str) -> bool:
+    if not filename or "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[1].lower()
+    return ext in ALLOWED_IMAGE_EXTS
+
 # ── Auth: single page (/auth) with toggle via ?view=login|create ─────────
 @app.get("/auth")
 def auth():
@@ -245,7 +272,7 @@ def _alias_signup():
 @app.get("/")
 @login_required
 def index():
-    # Pass the van numbers to the template (as strings for convenience)
+    # 🔹 CHANGED: pass your full van list
     vans = [str(n) for n in VAN_NUMBERS]
     return render_template("index.html", vans=vans, me=current_user(), title="Van Daily Checklist")
 
@@ -337,6 +364,37 @@ def api_submit():
         import traceback; traceback.print_exc()
         db.session.rollback()
         return jsonify({"ok": False, "error": f"server_error: {e.__class__.__name__}"}), 500
+
+# 🔹 ADD: photos upload endpoint
+@app.post("/api/entries/<int:entry_id>/photos")
+@api_login_required
+def api_upload_photos(entry_id):
+    entry = ChecklistEntry.query.get_or_404(entry_id)
+    if "photos" not in request.files:
+        return jsonify({"ok": False, "error": "no_files"}), 400
+
+    files = request.files.getlist("photos")
+    saved = []
+    for f in files:
+        if not f or f.filename == "":
+            continue
+        if not _allowed_image(f.filename):
+            continue
+        ext = f.filename.rsplit(".", 1)[1].lower()
+        unique = f"{entry_id}_{uuid4().hex}.{ext}"
+        safe = secure_filename(unique)
+        f.save(os.path.join(app.config["UPLOAD_FOLDER"], safe))
+        db.session.add(ChecklistPhoto(entry_id=entry_id, filename=safe))
+        saved.append(safe)
+
+    db.session.commit()
+    return jsonify({"ok": True, "count": len(saved), "files": saved})
+
+# 🔹 ADD: serve uploaded files
+@app.get("/uploads/<path:filename>")
+@login_required
+def get_upload(filename):
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 # ── PWA assets & health ──────────────────────────────────────────────────
 @app.get("/service-worker.js")
