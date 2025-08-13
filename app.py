@@ -16,9 +16,20 @@ from sqlalchemy import text
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.getenv("SECRET_KEY", "dev-insecure-change-me")
 
-# ── Single hard-coded admin (case-sensitive) ─────────────────────────────
+# ── Admin credentials (hard-coded) ───────────────────────────────────────
 ADMIN_USERNAME = "tynanfleetadmin"
 ADMIN_PASSWORD = "Tynanvans2025"
+
+# ── Vehicle numbers (edit this list when vans change) ────────────────────
+VAN_NUMBERS = [
+    131, 138, 156, 159, 166, 169, 172, 174, 175, 176, 177,
+    179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189,
+    190, 191, 192, 193, 194, 195, 196, 198, 199, 200, 201,
+    202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212,
+    213, 214, 215, 217, 218, 219, 220, 221, 222, 223, 224,
+    225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235,
+    236, 237, 238, 239, 240
+]
 
 # ── Database ──────────────────────────────────────────────────────────────
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///checklist.db")
@@ -31,7 +42,7 @@ class User(db.Model):
     id         = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     name       = db.Column(db.String(120), nullable=False)
-    username   = db.Column(db.String(120), unique=True, nullable=False)  # email or handle
+    username   = db.Column(db.String(120), unique=True, nullable=False)
     password   = db.Column(db.String(255), nullable=False)
 
 class ChecklistEntry(db.Model):
@@ -72,47 +83,29 @@ class ChecklistEntry(db.Model):
 
 # ── Startup: create tables + add any missing columns (SQLite safe) ────────
 def _ensure_columns():
-    """
-    Ensure checklist_entries has all columns our model expects.
-    Handles older SQLite DBs created before we added new fields.
-    """
     try:
         cols = {row[1] for row in db.session.execute(text("PRAGMA table_info(checklist_entries)"))}
     except Exception:
         cols = set()
 
-    # Add user_id first (older DBs won't have it)
     if "user_id" not in cols:
         try:
             db.session.execute(text("ALTER TABLE checklist_entries ADD COLUMN user_id INTEGER"))
         except Exception as e:
             print(f"[MIGRATION] Could not add column user_id: {e}")
 
-    # Core boolean checks (safe to re-check)
-    core = [
-        ("interior_clean","BOOLEAN","0"),
-        ("trash_removed","BOOLEAN","0"),
-        ("tools_secured","BOOLEAN","0"),
-        ("tires_ok","BOOLEAN","0"),
-        ("lights_ok","BOOLEAN","0"),
-        ("fluids_ok","BOOLEAN","0"),
+    needed = [
+        ("interior_clean","BOOLEAN","0"), ("trash_removed","BOOLEAN","0"),
+        ("tools_secured","BOOLEAN","0"), ("tires_ok","BOOLEAN","0"),
+        ("lights_ok","BOOLEAN","0"), ("fluids_ok","BOOLEAN","0"),
+        ("windshield_clean","BOOLEAN","0"), ("wiper_fluid_ok","BOOLEAN","0"),
+        ("horn_ok","BOOLEAN","0"), ("seatbelts_ok","BOOLEAN","0"),
+        ("first_aid_present","BOOLEAN","0"), ("fire_extinguisher_present","BOOLEAN","0"),
+        ("backup_camera_ok","BOOLEAN","0"), ("registration_present","BOOLEAN","0"),
+        ("turn_signals_ok","BOOLEAN","0"), ("brake_lights_ok","BOOLEAN","0"),
+        ("spare_tire_present","BOOLEAN","0"), ("jack_present","BOOLEAN","0"),
     ]
-    # Extra checks
-    extras = [
-        ("windshield_clean","BOOLEAN","0"),
-        ("wiper_fluid_ok","BOOLEAN","0"),
-        ("horn_ok","BOOLEAN","0"),
-        ("seatbelts_ok","BOOLEAN","0"),
-        ("first_aid_present","BOOLEAN","0"),
-        ("fire_extinguisher_present","BOOLEAN","0"),
-        ("backup_camera_ok","BOOLEAN","0"),
-        ("registration_present","BOOLEAN","0"),
-        ("turn_signals_ok","BOOLEAN","0"),
-        ("brake_lights_ok","BOOLEAN","0"),
-        ("spare_tire_present","BOOLEAN","0"),
-        ("jack_present","BOOLEAN","0"),
-    ]
-    for name, typ, default in core + extras:
+    for name, typ, default in needed:
         if name not in cols:
             try:
                 db.session.execute(text(f"ALTER TABLE checklist_entries ADD COLUMN {name} {typ} DEFAULT {default}"))
@@ -137,7 +130,6 @@ def current_user():
 def login_required(f):
     @wraps(f)
     def w(*a, **k):
-        # Admins can also view the checklist
         if not session.get("user_id") and not session.get("admin_authed"):
             return redirect(url_for("auth", view="login", next=request.path))
         return f(*a, **k)
@@ -161,15 +153,12 @@ def api_login_required(f):
 
 @app.context_processor
 def inject_ctx():
-    return {
-        "current_user": current_user(),
-        "admin_authed": bool(session.get("admin_authed"))
-    }
+    return {"current_user": current_user(), "admin_authed": bool(session.get("admin_authed"))}
 
-# ── Auth: single page (/auth) with toggle via ?view=login|create ─────────
+# ── Auth (single page with toggle) ────────────────────────────────────────
 @app.get("/auth")
 def auth():
-    view = request.args.get("view", "login")  # "login" or "create"
+    view = request.args.get("view", "login")
     return render_template("auth.html", title="Sign In", view=view)
 
 @app.post("/auth/login")
@@ -177,14 +166,11 @@ def auth_login():
     username = (request.form.get("username") or "").strip()
     password = (request.form.get("password") or "")
 
-    # Admin short-circuit
     if compare_digest(username, ADMIN_USERNAME) and compare_digest(password, ADMIN_PASSWORD):
         session["admin_authed"] = True
         flash("Admin signed in.", "ok")
-        # Admin lands on checklist; can click Admin: Submissions from nav
         return redirect(request.args.get("next") or url_for("index"))
 
-    # Normal user
     u = User.query.filter_by(username=username.lower()).first()
     if not u or not check_password_hash(u.password, password):
         flash("Invalid username or password.", "error")
@@ -221,7 +207,6 @@ def logout():
     flash("Signed out.", "ok")
     return redirect(url_for("auth", view="login"))
 
-# Old URL aliases (optional; keeps old bookmarks working)
 @app.get("/login")
 def _alias_login():
     return redirect(url_for("auth", view="login"))
@@ -234,7 +219,7 @@ def _alias_signup():
 @app.get("/")
 @login_required
 def index():
-    vans = ["Van-01","Van-02","Van-03","Van-04","Van-05"]
+    vans = [str(n) for n in VAN_NUMBERS]  # make strings for select values
     return render_template("index.html", vans=vans, me=current_user(), title="Van Daily Checklist")
 
 @app.get("/admin/submissions")
@@ -281,13 +266,12 @@ def api_submit():
     try:
         d = request.get_json(force=True) or {}
 
-        # Required fields
         for k in ("shift","mechanic","van_id"):
             if not d.get(k):
                 return jsonify({"ok": False, "error": f"Missing field: {k}"}), 400
 
         entry = ChecklistEntry(
-            user_id = (current_user().id if current_user() else None),  # admin will be None
+            user_id = (current_user().id if current_user() else None),
             shift = d.get("shift"),
             mechanic = d.get("mechanic"),
             van_id = d.get("van_id"),

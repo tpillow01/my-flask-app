@@ -1,96 +1,144 @@
 {% extends "base.html" %}
 {% block content %}
 
-<section class="hero card">
-  <div class="hero-left">
-    <h1 id="greeting">Good morning, {{ me.name if me else 'Mechanic' }}</h1>
-    <p class="sub">Today’s van: <strong id="heroVan">—</strong></p>
-    <div class="cta">
-      <button type="button" id="startBtn" class="btn primary">Start shift check</button>
-      <button type="button" id="scrollToForm" class="btn ghost">Jump to form</button>
-    </div>
-  </div>
-  <div class="hero-right">
-    <div id="checksRing" class="ring" style="--val:0;">
-      <span id="checksRingText">0/14<br><small>checks</small></span>
-    </div>
-  </div>
-</section>
-
 <section class="card">
-  <div class="card-head">
-    <h2>Daily Van Checklist</h2>
-    <div class="toggle-dot" title="Active"></div>
-  </div>
+  <h1>Daily Van Checklist</h1>
+  <p class="sub">Fill this out at the start and end of your shift.</p>
 
-  <form id="checklistForm" autocomplete="on">
+  <form id="checklistForm">
     <div class="grid">
       <label class="field">
         <span>Shift</span>
         <select name="shift" id="shift" required>
-          <option value="Start">Start of Day</option>
-          <option value="End">End of Day</option>
+          <option value="" disabled selected>Select one</option>
+          <option value="Start">Start</option>
+          <option value="End">End</option>
         </select>
       </label>
 
       <label class="field">
         <span>Mechanic Name</span>
-        <input name="mechanic" id="mechanic" type="text"
-               value="{{ me.name if me else '' }}" placeholder="e.g., Jordan" required />
+        <input type="text" name="mechanic" id="mechanic" placeholder="Your name" required />
       </label>
 
       <label class="field">
         <span>Van</span>
         <select name="van_id" id="van_id" required>
-          {% for v in vans %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+          <option value="" disabled selected>Select van</option>
+          {% for v in vans %}
+            <option value="{{ v }}">Van {{ v }}</option>
+          {% endfor %}
         </select>
       </label>
 
       <label class="field">
         <span>Odometer</span>
-        <input name="odometer" id="odometer" type="number" inputmode="numeric" min="0" placeholder="e.g., 123456" />
+        <input type="number" name="odometer" id="odometer" min="0" step="1" placeholder="e.g., 45231" />
       </label>
 
-      <label class="field fuel-field">
-        <span>Fuel Level</span>
-        <div class="fuel-wrap">
-          <div id="fuelRing" class="ring small" style="--val:.33"><span id="fuelRingText">33%</span></div>
-          <input name="fuel_level" id="fuel" type="range" min="0" max="100" value="33" />
-        </div>
+      <label class="field">
+        <span>Fuel Level (%)</span>
+        <input type="number" name="fuel_level" id="fuel_level" min="0" max="100" step="1" placeholder="0–100" />
       </label>
     </div>
 
-    <!-- 14 checks -->
-    <div class="checks pills">
-      <label><input type="checkbox" name="interior_clean"> Interior clean</label>
-      <label><input type="checkbox" name="trash_removed"> Trash removed</label>
-      <label><input type="checkbox" name="tools_secured"> Tools secured</label>
+    <h3 class="group">Core Checks</h3>
+    <div class="checks">
+      <label><input type="checkbox" name="interior_clean" /> Interior clean</label>
+      <label><input type="checkbox" name="trash_removed" /> Trash removed</label>
+      <label><input type="checkbox" name="tools_secured" /> Tools secured</label>
+      <label><input type="checkbox" name="tires_ok" /> Tires OK</label>
+      <label><input type="checkbox" name="lights_ok" /> Lights OK</label>
+      <label><input type="checkbox" name="fluids_ok" /> Fluids OK</label>
+    </div>
 
-      <label><input type="checkbox" name="tires_ok"> Tires OK</label>
-      <label><input type="checkbox" name="lights_ok"> Lights working</label>
-      <label><input type="checkbox" name="fluids_ok"> Fluids OK</label>
-
-      <label><input type="checkbox" name="windshield_clean"> Windshield clean</label>
-      <label><input type="checkbox" name="wiper_fluid_ok"> Wiper fluid OK</label>
-      <label><input type="checkbox" name="horn_ok"> Horn working</label>
-
-      <label><input type="checkbox" name="seatbelts_ok"> Seatbelts OK</label>
-      <label><input type="checkbox" name="first_aid_present"> First-aid kit</label>
-      <label><input type="checkbox" name="fire_extinguisher_present"> Fire extinguisher</label>
-
-      <label><input type="checkbox" name="backup_camera_ok"> Backup camera OK</label>
-      <label><input type="checkbox" name="registration_present"> Registration/insurance present</label>
+    <h3 class="group">Extra Safety/Compliance</h3>
+    <div class="checks">
+      <label><input type="checkbox" name="windshield_clean" /> Windshield clean</label>
+      <label><input type="checkbox" name="wiper_fluid_ok" /> Wiper fluid OK</label>
+      <label><input type="checkbox" name="horn_ok" /> Horn works</label>
+      <label><input type="checkbox" name="seatbelts_ok" /> Seatbelts OK</label>
+      <label><input type="checkbox" name="first_aid_present" /> First-aid kit present</label>
+      <label><input type="checkbox" name="fire_extinguisher_present" /> Fire extinguisher present</label>
+      <label><input type="checkbox" name="backup_camera_ok" /> Backup camera OK</label>
+      <label><input type="checkbox" name="registration_present" /> Registration/insurance present</label>
+      <label><input type="checkbox" name="turn_signals_ok" /> Turn signals OK</label>
+      <label><input type="checkbox" name="brake_lights_ok" /> Brake lights OK</label>
+      <label><input type="checkbox" name="spare_tire_present" /> Spare tire present</label>
+      <label><input type="checkbox" name="jack_present" /> Jack present</label>
     </div>
 
     <label class="field">
       <span>Notes</span>
-      <textarea name="notes" id="notes" rows="3" placeholder="Enter any additional notes..."></textarea>
+      <textarea name="notes" id="notes" rows="3" placeholder="Anything to flag?"></textarea>
     </label>
 
     <div class="actions">
-      <button class="btn primary" type="submit">Save Check</button>
-      <span id="status" class="status"></span>
+      <button class="btn primary" type="submit">Submit Checklist</button>
     </div>
   </form>
 </section>
+
+<script>
+  // Minimal submit handler (uses JSON API). If you already have static/app.js doing this, you can delete this script block.
+  const form = document.getElementById('checklistForm');
+
+  function bool(name){ return document.querySelector(`[name="${name}"]`).checked; }
+  function val(id){ const el = document.getElementById(id); return el ? el.value : ""; }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      shift: val('shift'),
+      mechanic: val('mechanic'),
+      van_id: val('van_id'),
+      odometer: val('odometer'),
+      fuel_level: val('fuel_level'),
+
+      interior_clean: bool('interior_clean'),
+      trash_removed: bool('trash_removed'),
+      tools_secured: bool('tools_secured'),
+      tires_ok: bool('tires_ok'),
+      lights_ok: bool('lights_ok'),
+      fluids_ok: bool('fluids_ok'),
+
+      windshield_clean: bool('windshield_clean'),
+      wiper_fluid_ok: bool('wiper_fluid_ok'),
+      horn_ok: bool('horn_ok'),
+      seatbelts_ok: bool('seatbelts_ok'),
+      first_aid_present: bool('first_aid_present'),
+      fire_extinguisher_present: bool('fire_extinguisher_present'),
+      backup_camera_ok: bool('backup_camera_ok'),
+      registration_present: bool('registration_present'),
+      turn_signals_ok: bool('turn_signals_ok'),
+      brake_lights_ok: bool('brake_lights_ok'),
+      spare_tire_present: bool('spare_tire_present'),
+      jack_present: bool('jack_present'),
+
+      notes: document.getElementById('notes').value
+    };
+
+    try {
+      const res = await fetch('/api/submit', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Submit failed');
+
+      alert('Submitted ✔');
+      form.reset();
+    } catch (err) {
+      if (err && err.message === 'unauthorized') {
+        window.location.href = '/auth?next=/';
+      } else {
+        alert('Error submitting: ' + (err.message || err));
+        console.error(err);
+      }
+    }
+  });
+</script>
+
 {% endblock %}
