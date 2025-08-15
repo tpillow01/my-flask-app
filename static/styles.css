@@ -130,3 +130,25 @@ td{word-break:break-word}
   .card{box-shadow:none; border-color:#bbb}
   .table th,.table td{border-color:#bbb}
 }
+
+/* --- Fix long checklist labels on mobile --- */
+.checks.pills label{
+  /* allow grid items to shrink/wrap instead of overflowing */
+  min-width: 0;
+  /* wrap long words like "Registration/insurance" */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.25;
+  align-items: flex-start; /* keep checkbox aligned with multi-line text */
+}
+
+.checks.pills input[type="checkbox"]{
+  flex: 0 0 auto;
+  margin-top: 2px; /* looks nicer when label wraps to two lines */
+}
+
+/* Give very small screens a single column so pills have more width */
+@media (max-width: 420px){
+  .checks.pills{ grid-template-columns: 1fr; }
+}
